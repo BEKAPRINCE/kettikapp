@@ -12,12 +12,16 @@ struct MapView: View {
         ZStack(alignment: .top) {
             
             // MARK: - Map
-            Map(coordinateRegion: $vm.region,
-                showsUserLocation: vm.showUserLocation,
-                annotationItems: vm.routes) { route in
-                MapAnnotation(coordinate: route.coordinate) {
+            Map(position: mapPosition) {
+                if vm.showUserLocation {
+                    UserAnnotation()
+                }
+
+                ForEach(vm.routes) { route in
+                    Annotation("", coordinate: route.coordinate, anchor: .bottom) {
                     RouteMapAnnotation(route: route, isSelected: vm.selectedRoute?.id == route.id)
                         .onTapGesture { vm.selectRoute(route) }
+                    }
                 }
             }
             .ignoresSafeArea()
@@ -90,6 +94,16 @@ struct MapView: View {
             FavoritesSheetView(routes: vm.favoriteRoutes) { route in
                 vm.selectRoute(route)
                 showFavoritesSheet = false
+            }
+        }
+    }
+
+    private var mapPosition: Binding<MapCameraPosition> {
+        Binding {
+            .region(vm.region)
+        } set: { newPosition in
+            if let region = newPosition.region {
+                vm.region = region
             }
         }
     }

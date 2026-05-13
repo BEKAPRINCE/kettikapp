@@ -9,7 +9,7 @@ final class MapViewModel: ObservableObject {
     @Published var routes: [Route] = Route.sampleData
     @Published var selectedRoute: Route?
     @Published var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 42.8746, longitude: 74.5698),
+        center: CLLocationCoordinate2D(latitude: 40.513998, longitude: 72.816097),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     @Published var favoriteIDs: Set<Int> = [1, 3]

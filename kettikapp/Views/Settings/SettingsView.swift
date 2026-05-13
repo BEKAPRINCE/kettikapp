@@ -224,7 +224,7 @@ struct DangerZoneView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("ОПАСНАЯ ЗОНА")
+            Text("УДАЛЕНИЕ АККАУНТА")
                 .font(.appLabel)
                 .foregroundColor(.dangerRed.opacity(0.7))
                 .kerning(0.8)

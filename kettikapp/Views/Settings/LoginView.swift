@@ -62,6 +62,7 @@ struct LoginView: View {
                                     .font(.system(size: 15))
                                 TextField("your@email.com", text: $email)
                                     .foregroundColor(.textPrimary)
+                                    .textFieldStyle(.plain)
                                     .keyboardType(.emailAddress)
                                     .autocorrectionDisabled()
                                     .textInputAutocapitalization(.never)
@@ -88,10 +89,12 @@ struct LoginView: View {
                                 if showPassword {
                                     TextField("Мин. 6 символов", text: $password)
                                         .foregroundColor(.textPrimary)
+                                        .textFieldStyle(.plain)
                                         .focused($focusedField, equals: .password)
                                 } else {
                                     SecureField("Мин. 6 символов", text: $password)
                                         .foregroundColor(.textPrimary)
+                                        .textFieldStyle(.plain)
                                         .focused($focusedField, equals: .password)
                                 }
                                 Button { showPassword.toggle() } label: {
@@ -162,9 +165,11 @@ struct LoginView: View {
                         Spacer(minLength: isCompact ? 24 : 52)
                     }
                     .padding(.horizontal, 24)
+                    .frame(maxWidth: 420)
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .frame(maxWidth: .infinity)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 }

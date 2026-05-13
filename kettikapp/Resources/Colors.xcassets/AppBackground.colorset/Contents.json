@@ -10,7 +10,7 @@
           "red" : "0.969"
         }
       },
-      "idiom" : "iphone"
+      "idiom" : "universal"
     },
     {
       "appearances" : [
@@ -28,7 +28,7 @@
           "red" : "0.059"
         }
       },
-      "idiom" : "iphone"
+      "idiom" : "universal"
     }
   ],
   "info" : {

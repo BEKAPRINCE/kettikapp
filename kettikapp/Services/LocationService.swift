@@ -12,8 +12,8 @@ final class LocationService: NSObject, ObservableObject {
     
     private let manager = CLLocationManager()
     
-    // Default center: Bishkek city center
-    let defaultCenter = CLLocationCoordinate2D(latitude: 42.8746, longitude: 74.5698)
+    // Default center: Osh city center
+    let defaultCenter = CLLocationCoordinate2D(latitude: 40.513998, longitude: 72.816097)
     
     override init() {
         super.init()

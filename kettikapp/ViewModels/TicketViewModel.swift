@@ -26,7 +26,7 @@ final class TicketViewModel: ObservableObject {
     }
     
     var qrCodeString: String {
-        "BISHKEK-TRANSIT:\(ticket.ticketNumber):\(ticket.ownerName)"
+        "OSH-TRANSIT:\(ticket.ticketNumber):\(ticket.ownerName)"
     }
     
     var statsItems: [(label: String, value: String, icon: String, color: String)] {

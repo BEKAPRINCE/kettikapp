@@ -126,11 +126,11 @@ struct MonthlyTicket {
 // MARK: - Sample Data
 extension Route {
     static let sampleData: [Route] = [
-        Route(id: 1, number: "12А",         type: .bus,     totalStops: 18, etaMinutes: 3,  coordinate: CLLocationCoordinate2D(latitude: 42.871, longitude: 74.594)),
-        Route(id: 2, number: "5",           type: .trolley, totalStops: 24, etaMinutes: 7,  coordinate: CLLocationCoordinate2D(latitude: 42.874, longitude: 74.598)),
-        Route(id: 3, number: "238",         type: .minibus, totalStops: 12, etaMinutes: 2,  coordinate: CLLocationCoordinate2D(latitude: 42.868, longitude: 74.591)),
-        Route(id: 5, number: "7Б",          type: .bus,     totalStops: 15, etaMinutes: 5,  coordinate: CLLocationCoordinate2D(latitude: 42.865, longitude: 74.588)),
-        Route(id: 6, number: "8",           type: .trolley, totalStops: 22, etaMinutes: 9,  coordinate: CLLocationCoordinate2D(latitude: 42.870, longitude: 74.596)),
-        Route(id: 7, number: "280",         type: .minibus, totalStops: 16, etaMinutes: 4,  coordinate: CLLocationCoordinate2D(latitude: 42.872, longitude: 74.600)),
+        Route(id: 1, number: "12А",         type: .bus,     totalStops: 18, etaMinutes: 3,  coordinate: CLLocationCoordinate2D(latitude: 40.515, longitude: 72.816)),
+        Route(id: 2, number: "5",           type: .trolley, totalStops: 24, etaMinutes: 7,  coordinate: CLLocationCoordinate2D(latitude: 40.519, longitude: 72.821)),
+        Route(id: 3, number: "238",         type: .minibus, totalStops: 12, etaMinutes: 2,  coordinate: CLLocationCoordinate2D(latitude: 40.509, longitude: 72.812)),
+        Route(id: 5, number: "7Б",          type: .bus,     totalStops: 15, etaMinutes: 5,  coordinate: CLLocationCoordinate2D(latitude: 40.506, longitude: 72.807)),
+        Route(id: 6, number: "8",           type: .trolley, totalStops: 22, etaMinutes: 9,  coordinate: CLLocationCoordinate2D(latitude: 40.513, longitude: 72.818)),
+        Route(id: 7, number: "280",         type: .minibus, totalStops: 16, etaMinutes: 4,  coordinate: CLLocationCoordinate2D(latitude: 40.522, longitude: 72.826)),
     ]
 }
