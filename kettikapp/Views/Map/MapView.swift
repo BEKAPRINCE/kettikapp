@@ -17,10 +17,20 @@ struct MapView: View {
                     UserAnnotation()
                 }
 
+                ForEach(vm.busStops) { stop in
+                    Annotation("", coordinate: stop.coordinate, anchor: .bottom) {
+                        BusStopAnnotation(stop: stop, isSelected: vm.selectedStop?.id == stop.id)
+                            .onTapGesture { vm.selectStop(stop) }
+                    }
+                }
+
                 ForEach(vm.routes) { route in
                     Annotation("", coordinate: route.coordinate, anchor: .bottom) {
                     RouteMapAnnotation(route: route, isSelected: vm.selectedRoute?.id == route.id)
-                        .onTapGesture { vm.selectRoute(route) }
+                        .onTapGesture {
+                            vm.selectStop(nil)
+                            vm.selectRoute(route)
+                        }
                     }
                 }
             }
@@ -67,9 +77,21 @@ struct MapView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+
+            if let stop = vm.selectedStop {
+                VStack {
+                    Spacer()
+                    BusStopCard(stop: stop) {
+                        vm.selectStop(nil)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 100)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             
             // MARK: - Favorites strip (when no route selected)
-            if vm.selectedRoute == nil && !vm.favoriteRoutes.isEmpty {
+            if vm.selectedRoute == nil && vm.selectedStop == nil && !vm.favoriteRoutes.isEmpty {
                 VStack {
                     Spacer()
                     FavoritesStrip(routes: vm.favoriteRoutes) { route in
@@ -117,7 +139,7 @@ struct MapHeaderView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("KetTik")
+                Text("Kettik")
                     .font(.appHeadline)
                     .foregroundColor(.textPrimary)
                 Text("8 маршрутов онлайн")
@@ -202,6 +224,85 @@ struct RouteMapAnnotation: View {
                 .frame(width: 6, height: 6)
         }
         .animation(.spring(response: 0.3), value: isSelected)
+    }
+}
+
+// MARK: - Bus Stop Annotation
+struct BusStopAnnotation: View {
+    let stop: BusStop
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 2) {
+            ZStack {
+                Circle()
+                    .fill(stop.direction == .outbound ? Color.accentTeal : Color.accentYellow)
+                    .frame(width: isSelected ? 18 : 12, height: isSelected ? 18 : 12)
+                    .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: isSelected ? 3 : 2))
+                    .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+
+                if isSelected {
+                    Image(systemName: "bus.fill")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.black)
+                }
+            }
+
+            if isSelected {
+                Text(stop.name)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.cardBackground.opacity(0.95))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.cardBorder, lineWidth: 1))
+            }
+        }
+    }
+}
+
+// MARK: - Bus Stop Card
+struct BusStopCard: View {
+    let stop: BusStop
+    let onDismiss: () -> Void
+
+    var directionText: String {
+        stop.direction == .outbound ? "туда" : "обратно"
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(stop.direction == .outbound ? Color.accentTeal.opacity(0.2) : Color.accentYellow.opacity(0.2))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "bus.fill")
+                    .foregroundColor(stop.direction == .outbound ? .accentTeal : .accentYellow)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(stop.name)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                Text("Маршрут 43 • \(directionText)")
+                    .font(.appCaption)
+                    .foregroundColor(.textSecondary)
+            }
+
+            Spacer()
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .foregroundColor(.textSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.appBackground.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding(16)
+        .cardStyle()
     }
 }
 
@@ -336,13 +437,6 @@ struct FavoritesStrip: View {
             }
         }
         .padding(.vertical, 10)
-        .background(
-            LinearGradient(
-                colors: [Color.clear, Color.appBackground.opacity(0.9)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
     }
 }
 

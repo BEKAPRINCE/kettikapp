@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDR65yHTXbxmAK30vY2dYALC_4tq9quKV0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>716252726755</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>bekzhan.kettikapp</string>
+	<key>PROJECT_ID</key>
+	<string>kettikapp-50b8d</string>
+	<key>STORAGE_BUCKET</key>
+	<string>kettikapp-50b8d.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:716252726755:ios:e5be5d0f70078ead04ccd6</string>
+</dict>
+</plist>

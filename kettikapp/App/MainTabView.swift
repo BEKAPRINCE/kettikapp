@@ -59,19 +59,34 @@ struct CustomTabBar: View {
             TabBarButton(icon: "qrcode",          label: "Билет",    tab: .ticket,   selectedTab: $selectedTab)
             TabBarButton(icon: "person.fill",     label: "Профиль",  tab: .settings, selectedTab: $selectedTab)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 12)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
         .background(
-            Rectangle()
-                .fill(Color.cardBackground)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.ultraThinMaterial)
                 .overlay(
-                    Rectangle()
-                        .frame(height: 0.5)
-                        .foregroundColor(Color.cardBorder.opacity(0.8)),
-                    alignment: .top
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(Color.cardBackground.opacity(0.52))
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.22),
+                                    Color.cardBorder.opacity(0.7),
+                                    Color.accentTeal.opacity(0.18)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
         )
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
     }
 }
 
@@ -93,19 +108,24 @@ struct TabBarButton: View {
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 22, weight: isSelected ? .bold : .regular))
+                    .font(.system(size: 21, weight: isSelected ? .bold : .regular))
                     .foregroundColor(isSelected ? .accentTeal : .textMuted)
-                    .scaleEffect(isSelected ? 1.1 : 1.0)
+                    .scaleEffect(isSelected ? 1.08 : 1.0)
                 
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11, weight: isSelected ? .bold : .semibold))
                     .foregroundColor(isSelected ? .accentTeal : .textMuted)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .frame(height: 58)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? Color.accentTeal.opacity(0.15) : Color.clear)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(isSelected ? Color.accentTeal.opacity(0.18) : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(isSelected ? Color.white.opacity(0.12) : Color.clear, lineWidth: 1)
+                    )
             )
         }
         .buttonStyle(PlainButtonStyle())

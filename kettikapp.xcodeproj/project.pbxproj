@@ -368,6 +368,7 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
 	};
 	rootObject = EF5905FC2F5184EB00233CBA /* Project object */;
 }

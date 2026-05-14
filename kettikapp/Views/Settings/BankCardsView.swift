@@ -18,7 +18,7 @@ struct BankCardsView: View {
                     if vm.cards.isEmpty {
                         EmptyCardsView()
                     } else {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 10) {
                             ForEach(vm.cards) { card in
                                 BankCardItem(card: card, onEdit: { editingCard = card }, onDelete: {
                                     vm.removeCard(id: card.id)
@@ -79,13 +79,13 @@ struct BankCardItem: View {
     @State private var showDeleteAlert = false
     
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             // Card visual
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(LinearGradient(colors: [Color(hex: "#2C4F85"), Color(hex: "#3E6BAA")],
                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 56, height: 38)
+                    .frame(width: 54, height: 36)
                     .shadow(color: .black.opacity(0.3), radius: 6)
                 Image(systemName: card.cardType.icon)
                     .font(.system(size: 18))
@@ -93,36 +93,44 @@ struct BankCardItem: View {
             }
             
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(card.cardType.rawValue) \(card.last4)")
+                Text("\(card.cardType.rawValue) •••• \(card.last4)")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                if !card.expiry.isEmpty {
+                    Text("до \(card.expiry)")
+                        .font(.appCaption)
+                        .foregroundColor(.textMuted)
+                        .lineLimit(1)
+                }
             }
-            
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             
             Button(action: onEdit) {
-                Text("Изменить")
-                    .font(.system(size: 13, weight: .semibold))
+                Image(systemName: "pencil")
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.accentTeal)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
+                    .frame(width: 40, height: 40)
                     .background(Color.accentTeal.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
+            .accessibilityLabel("Изменить карту")
             
             Button {
                 showDeleteAlert = true
             } label: {
-                Text("Удалить")
-                    .font(.system(size: 13, weight: .semibold))
+                Image(systemName: "trash")
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.dangerRed)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
+                    .frame(width: 40, height: 40)
                     .background(Color.dangerRed.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
+            .accessibilityLabel("Удалить карту")
         }
-        .padding(16)
+        .padding(14)
         .cardStyle()
         .alert("Удалить карту?", isPresented: $showDeleteAlert) {
             Button("Отмена", role: .cancel) {}

@@ -1,10 +1,12 @@
 import SwiftUI
+import StoreKit
 
 // MARK: - Settings View
 struct SettingsView: View {
     
     @EnvironmentObject var vm: SettingsViewModel
     @EnvironmentObject var authVM: AuthViewModel
+    @Environment(\.requestReview) private var requestReview
     
     var body: some View {
         NavigationStack {
@@ -12,7 +14,7 @@ struct SettingsView: View {
                 Color.appBackground.ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 22) {
                         
                         // Profile header card
                         NavigationLink(destination: EditProfileView().environmentObject(vm)) {
@@ -47,20 +49,27 @@ struct SettingsView: View {
                         .padding(.horizontal, 20)
                         
                         SettingsGroupView(title: "Поддержка") {
-                            SettingsRow(icon: "questionmark.circle.fill", label: "Помощь", color: .accentTeal)
+                            NavigationLink(destination: HelpView()) {
+                                SettingsRow(icon: "questionmark.circle.fill", label: "Помощь", color: .accentTeal)
+                            }
                             Divider().background(Color.cardBorder).padding(.leading, 56)
-                            Button { vm.showToast("Спасибо за оценку! ❤️") } label: {
+                            Button {
+                                requestReview()
+                                vm.showToast("Спасибо за оценку!")
+                            } label: {
                                 SettingsRow(icon: "star.fill", label: "Оценить приложение", color: .accentYellow)
                             }
                             Divider().background(Color.cardBorder).padding(.leading, 56)
-                            SettingsRow(icon: "info.circle.fill", label: "О приложении", subtitle: "v2.1.0", color: .accentGreen)
+                            NavigationLink(destination: AboutAppView()) {
+                                SettingsRow(icon: "info.circle.fill", label: "О приложении", subtitle: "v2.1.0", color: .accentGreen)
+                            }
                         }
                         .padding(.horizontal, 20)
                         
                         // Danger zone
                         DangerZoneView(showConfirm: $vm.showDeleteConfirm) {
                             vm.deleteAccount()
-                            authVM.logout()
+                            authVM.deleteAccount()
                         }
                         .padding(.horizontal, 20)
                         
@@ -78,10 +87,9 @@ struct SettingsView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.dangerRed.opacity(0.2), lineWidth: 1))
                         }
                         .padding(.horizontal, 20)
-                        
-                        Spacer(minLength: 100)
                     }
-                    .padding(.top, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 150)
                 }
                 
                 // Toast overlay
@@ -95,59 +103,193 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Help View
+struct HelpView: View {
+    private let helpItems = [
+        ("location.fill", "Карта и геолокация", "Разрешите доступ к геолокации, чтобы карта центрировалась на вашем местоположении."),
+        ("bus.fill", "Маршрут 43", "Автобус движется по добавленным остановкам. Нажмите на остановку, чтобы увидеть направление."),
+        ("creditcard.fill", "Оплата", "Банковские карты можно добавить в разделе профиля."),
+        ("person.fill.questionmark", "Аккаунт", "Вход и регистрация работают через email и пароль.")
+    ]
+
+    var body: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    ForEach(helpItems, id: \.1) { item in
+                        HelpInfoCard(icon: item.0, title: item.1, text: item.2)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 40)
+            }
+        }
+        .navigationTitle("Помощь")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct HelpInfoCard: View {
+    let icon: String
+    let title: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.accentTeal.opacity(0.16))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .foregroundColor(.accentTeal)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                Text(text)
+                    .font(.appCaption)
+                    .foregroundColor(.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+// MARK: - About App View
+struct AboutAppView: View {
+    var body: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentTeal.opacity(0.16))
+                        .frame(width: 86, height: 86)
+                    Image(systemName: "bus.fill")
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundColor(.accentTeal)
+                }
+
+                VStack(spacing: 8) {
+                    Text("KetTik")
+                        .font(.system(size: 30, weight: .heavy, design: .rounded))
+                        .foregroundColor(.textPrimary)
+                    Text("Версия 2.1.0")
+                        .font(.appCaption)
+                        .foregroundColor(.textSecondary)
+                }
+
+                VStack(spacing: 0) {
+                    AboutRow(label: "Маршрут", value: "43")
+                    Divider().background(Color.cardBorder).padding(.leading, 16)
+                    AboutRow(label: "Город", value: "Ош")
+                    Divider().background(Color.cardBorder).padding(.leading, 16)
+                    AboutRow(label: "Сервис", value: "Общественный транспорт")
+                }
+                .cardStyle()
+                .padding(.horizontal, 20)
+
+                Spacer()
+            }
+            .padding(.top, 34)
+        }
+        .navigationTitle("О приложении")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct AboutRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.appBody)
+                .foregroundColor(.textPrimary)
+            Spacer()
+            Text(value)
+                .font(.appCaption)
+                .foregroundColor(.textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+}
+
 // MARK: - Profile Header Card
 struct ProfileHeaderCard: View {
     let profile: UserProfile
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             // Avatar
             ZStack {
                 Circle()
                     .fill(LinearGradient(colors: [.accentTeal, Color(hex: "#4C79D8")],
                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 64, height: 64)
+                    .frame(width: 58, height: 58)
                     .shadow(color: .accentTeal.opacity(0.4), radius: 10)
                 Text(profile.avatarInitial)
-                    .font(.system(size: 26, weight: .black))
+                    .font(.system(size: 24, weight: .black))
                     .foregroundColor(.white)
             }
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(profile.fullName)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.textPrimary)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(profile.fullName)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Text("PREMIUM")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.accentTeal)
+                        .kerning(0.8)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentTeal.opacity(0.14))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.accentTeal.opacity(0.28), lineWidth: 1))
+                }
+
                 Text(profile.email)
-                    .font(.appCaption)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.textSecondary)
-                Text(profile.phone)
-                    .font(.appCaption)
-                    .foregroundColor(.textMuted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .minimumScaleFactor(0.8)
+
+                if !profile.phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(profile.phone)
+                        .font(.appCaption)
+                        .foregroundColor(.textMuted)
+                        .lineLimit(1)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             
             Spacer()
             
-            VStack(spacing: 2) {
-                Text("PREMIUM")
-                    .font(.system(size: 9, weight: .black))
-                    .foregroundColor(.accentTeal)
-                    .kerning(0.8)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.accentTeal.opacity(0.15))
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.accentTeal.opacity(0.3), lineWidth: 1))
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.textMuted)
-                    .padding(.top, 6)
-            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.textMuted)
         }
-        .padding(20)
+        .padding(18)
         .cardStyle()
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 18)
                 .stroke(Color.accentTeal.opacity(0.15), lineWidth: 1)
         )
     }
@@ -187,9 +329,9 @@ struct SettingsRow: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 9)
                     .fill(color.opacity(0.2))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 34, height: 34)
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(color)
             }
             
@@ -213,7 +355,7 @@ struct SettingsRow: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.vertical, 13)
     }
 }
 

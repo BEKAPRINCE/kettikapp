@@ -11,21 +11,20 @@ final class SettingsViewModel: ObservableObject {
         static let mapAnimations = "settings.mapAnimations"
         static let soundAlerts = "settings.soundAlerts"
         static let autoRefresh = "settings.autoRefresh"
+        static let bankCards = "settings.bankCards"
     }
     
     private let defaults = UserDefaults.standard
     
     // MARK: - Profile
     @Published var profile = UserProfile(
-        fullName: "Бекжан Атабаев",
-        email:    "Бекжан@example.com",
-        phone:    "+996 700 123 456"
+        fullName: "Пользователь",
+        email:    "",
+        phone:    ""
     )
     
     // MARK: - Bank Cards
-    @Published var cards: [BankCard] = [
-        BankCard(id: UUID(), last4: "4242", cardType: .visa, holderName: "ALIBEK DUISHENOV", expiry: "12/28", cvv: "")
-    ]
+    @Published var cards: [BankCard] = []
     
     // MARK: - App Settings
     @Published var notificationsEnabled = true {
@@ -58,30 +57,77 @@ final class SettingsViewModel: ObservableObject {
         mapAnimations = defaults.object(forKey: Keys.mapAnimations) as? Bool ?? true
         soundAlerts = defaults.object(forKey: Keys.soundAlerts) as? Bool ?? false
         autoRefresh = defaults.object(forKey: Keys.autoRefresh) as? Bool ?? true
+        cards = loadCachedCards()
+        loadCardsFromDatabase()
     }
     
     // MARK: - Profile Actions
     func saveProfile(_ updated: UserProfile) {
         profile = updated
+        FirebaseAuthRESTService.shared.saveProfile(updated)
         showToast("Профиль обновлён ✓")
     }
     
     // MARK: - Card Actions
     func addCard(_ card: BankCard) {
-        cards.append(card)
+        cards.append(sanitizedCard(card))
+        persistCards()
         showToast("Карта привязана ✓")
     }
     
     func updateCard(_ card: BankCard) {
         if let i = cards.firstIndex(where: { $0.id == card.id }) {
-            cards[i] = card
+            cards[i] = sanitizedCard(card)
+            persistCards()
             showToast("Карта обновлена ✓")
         }
     }
     
     func removeCard(id: UUID) {
         cards.removeAll { $0.id == id }
+        persistCards()
         showToast("Карта удалена")
+    }
+
+    private func sanitizedCard(_ card: BankCard) -> BankCard {
+        BankCard(
+            id: card.id,
+            last4: card.last4,
+            cardType: card.cardType,
+            holderName: card.holderName,
+            expiry: card.expiry,
+            cvv: ""
+        )
+    }
+
+    private func loadCachedCards() -> [BankCard] {
+        guard let data = defaults.data(forKey: Keys.bankCards),
+              let cards = try? JSONDecoder().decode([BankCard].self, from: data) else {
+            return []
+        }
+
+        return cards.map(sanitizedCard)
+    }
+
+    private func persistCards() {
+        let sanitized = cards.map(sanitizedCard)
+        if let data = try? JSONEncoder().encode(sanitized) {
+            defaults.set(data, forKey: Keys.bankCards)
+        }
+
+        FirebaseAuthRESTService.shared.saveBankCards(sanitized)
+    }
+
+    private func loadCardsFromDatabase() {
+        Task { [weak self] in
+            guard let remoteCards = try? await FirebaseAuthRESTService.shared.fetchBankCards() else { return }
+            await MainActor.run {
+                self?.cards = remoteCards.map { self?.sanitizedCard($0) ?? $0 }
+                if let data = try? JSONEncoder().encode(self?.cards ?? []) {
+                    self?.defaults.set(data, forKey: Keys.bankCards)
+                }
+            }
+        }
     }
     
     // MARK: - Account Actions

@@ -1,11 +1,17 @@
 import SwiftUI
+import Combine
 
 @main
 struct KetTikApp: App {
 
-    @StateObject private var authViewModel = AuthViewModel()
-    @StateObject private var settingsViewModel = SettingsViewModel()
+    @StateObject private var authViewModel: AuthViewModel
+    @StateObject private var settingsViewModel: SettingsViewModel
     @State private var showSplash = true
+
+    init() {
+        _authViewModel = StateObject(wrappedValue: AuthViewModel())
+        _settingsViewModel = StateObject(wrappedValue: SettingsViewModel())
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -20,6 +26,12 @@ struct KetTikApp: App {
                         MainTabView()
                             .environmentObject(authViewModel)
                             .environmentObject(settingsViewModel)
+                            .onReceive(authViewModel.$currentUserProfile.compactMap { $0 }) { profile in
+                                settingsViewModel.profile = profile
+                            }
+                            .onReceive(authViewModel.$currentUserProfile.filter { $0 == nil }) { _ in
+                                settingsViewModel.profile = UserProfile(fullName: "Пользователь", email: "", phone: "")
+                            }
                     } else {
                         AuthFlowView()
                             .environmentObject(authViewModel)

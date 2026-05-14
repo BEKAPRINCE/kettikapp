@@ -149,13 +149,6 @@ struct LoginView: View {
                         }
                         .disabled(email.isEmpty || password.count < 6 || vm.isLoading)
                         
-                        Button { vm.isAuthenticated = true } label: {
-                            Text("Войти без регистрации (демо)")
-                                .font(.appCaption)
-                                .foregroundColor(.textMuted)
-                                .underline()
-                        }
-                        
                         Button(action: onOpenRegister) {
                             Text("Нет аккаунта? Зарегистрироваться")
                                 .font(.appCaption)

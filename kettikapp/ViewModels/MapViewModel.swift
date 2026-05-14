@@ -7,12 +7,14 @@ import SwiftUI
 final class MapViewModel: ObservableObject {
     
     @Published var routes: [Route] = Route.sampleData
+    @Published var busStops: [BusStop] = BusStop.route43Stops
     @Published var selectedRoute: Route?
+    @Published var selectedStop: BusStop?
     @Published var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 40.513998, longitude: 72.816097),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
-    @Published var favoriteIDs: Set<Int> = [1, 3]
+    @Published var favoriteIDs: Set<Int> = [4]
     @Published var showUserLocation = true
     
     private let transportService = TransportService.shared
@@ -24,6 +26,7 @@ final class MapViewModel: ObservableObject {
         setupSubscriptions()
         setAutoRefresh(enabled: true)
         locationService.requestPermission()
+        locationService.startUpdating()
     }
     
     deinit {
@@ -58,6 +61,10 @@ final class MapViewModel: ObservableObject {
     func selectRoute(_ route: Route?) {
         withAnimation { selectedRoute = route }
     }
+
+    func selectStop(_ stop: BusStop?) {
+        withAnimation { selectedStop = stop }
+    }
     
     func toggleFavorite(routeID: Int) {
         if favoriteIDs.contains(routeID) {
@@ -76,6 +83,9 @@ final class MapViewModel: ObservableObject {
     func centerOnUser() {
         if let coord = locationService.userLocation {
             region.center = coord
+        } else {
+            locationService.requestPermission()
+            locationService.startUpdating()
         }
     }
     

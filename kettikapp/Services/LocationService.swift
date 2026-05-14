@@ -11,6 +11,7 @@ final class LocationService: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     
     private let manager = CLLocationManager()
+    private var isUpdating = false
     
     // Default center: Osh city center
     let defaultCenter = CLLocationCoordinate2D(latitude: 40.513998, longitude: 72.816097)
@@ -19,18 +20,48 @@ final class LocationService: NSObject, ObservableObject {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = 15
     }
     
     func requestPermission() {
-        manager.requestWhenInUseAuthorization()
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            startUpdating()
+        case .denied, .restricted:
+            userLocation = defaultCenter
+        @unknown default:
+            userLocation = defaultCenter
+        }
     }
     
     func startUpdating() {
+        guard !isUpdating else { return }
+        guard manager.authorizationStatus == .authorizedWhenInUse ||
+              manager.authorizationStatus == .authorizedAlways else {
+            requestPermission()
+            return
+        }
+
+        isUpdating = true
         manager.startUpdatingLocation()
+        manager.requestLocation()
     }
     
     func stopUpdating() {
+        isUpdating = false
         manager.stopUpdatingLocation()
+    }
+
+    private func normalizedCoordinate(from location: CLLocation) -> CLLocationCoordinate2D {
+        #if targetEnvironment(simulator)
+        if location.coordinate.isLikelySimulatorDefaultLocation {
+            return defaultCenter
+        }
+        #endif
+
+        return location.coordinate
     }
 }
 
@@ -38,7 +69,8 @@ final class LocationService: NSObject, ObservableObject {
 extension LocationService: CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        userLocation = locations.last?.coordinate
+        guard let location = locations.last else { return }
+        userLocation = normalizedCoordinate(from: location)
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -51,5 +83,14 @@ extension LocationService: CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location error: \(error.localizedDescription)")
+        userLocation = defaultCenter
+    }
+}
+
+private extension CLLocationCoordinate2D {
+    var isLikelySimulatorDefaultLocation: Bool {
+        let sanFrancisco = CLLocation(latitude: 37.785834, longitude: -122.406417)
+        let current = CLLocation(latitude: latitude, longitude: longitude)
+        return current.distance(from: sanFrancisco) < 20_000
     }
 }
