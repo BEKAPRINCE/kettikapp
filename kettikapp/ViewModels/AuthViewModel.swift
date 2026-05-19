@@ -34,6 +34,10 @@ final class FirebaseAuthRESTService {
         defaults.string(forKey: SessionKeys.localId) != nil
     }
 
+    private var currentIdToken: String? {
+        defaults.string(forKey: SessionKeys.idToken)
+    }
+
     func signIn(email: String, password: String) async throws -> UserProfile {
         let response: AuthResponse = try await authRequest(
             endpoint: "accounts:signInWithPassword",
@@ -81,7 +85,7 @@ final class FirebaseAuthRESTService {
     func restoreProfile() async throws -> UserProfile? {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = try await validIdToken()
         else {
             return nil
         }
@@ -94,20 +98,21 @@ final class FirebaseAuthRESTService {
 
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = currentIdToken
         else {
             return
         }
 
         Task {
-            try? await saveProfile(profile, localId: localId, idToken: idToken)
+            let freshToken = (try? await validIdToken()) ?? idToken
+            try? await saveProfile(profile, localId: localId, idToken: freshToken)
         }
     }
 
     func fetchBankCards() async throws -> [BankCard] {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = try await validIdToken()
         else {
             return []
         }
@@ -118,7 +123,7 @@ final class FirebaseAuthRESTService {
     func fetchSubscription() async throws -> UserSubscription {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = try await validIdToken()
         else {
             return .none
         }
@@ -129,27 +134,29 @@ final class FirebaseAuthRESTService {
     func saveBankCards(_ cards: [BankCard]) {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = currentIdToken
         else {
             return
         }
 
         Task {
-            try? await saveBankCards(cards, localId: localId, idToken: idToken)
+            let freshToken = (try? await validIdToken()) ?? idToken
+            try? await saveBankCards(cards, localId: localId, idToken: freshToken)
         }
     }
 
     func saveSubscription(_ subscription: UserSubscription) {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = currentIdToken
         else {
             return
         }
 
         Task {
             do {
-                try await saveSubscription(subscription, localId: localId, idToken: idToken)
+                let freshToken = (try? await validIdToken()) ?? idToken
+                try await saveSubscription(subscription, localId: localId, idToken: freshToken)
             } catch {
                 print("Firestore subscription sync failed: \(error.localizedDescription)")
             }
@@ -159,7 +166,7 @@ final class FirebaseAuthRESTService {
     func saveSubscriptionToDatabase(_ subscription: UserSubscription) async throws {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
-            let idToken = defaults.string(forKey: SessionKeys.idToken)
+            let idToken = try await validIdToken()
         else {
             throw FirebaseRESTError.missingSession
         }
@@ -179,7 +186,7 @@ final class FirebaseAuthRESTService {
     }
 
     func deleteAccount() async throws {
-        guard let idToken = defaults.string(forKey: SessionKeys.idToken) else {
+        guard let idToken = try await validIdToken() else {
             logout()
             return
         }
@@ -193,6 +200,45 @@ final class FirebaseAuthRESTService {
             body: ["idToken": idToken]
         )
         logout()
+    }
+
+    private func validIdToken() async throws -> String? {
+        guard hasSession else { return nil }
+
+        if let refreshed = try? await refreshIdToken() {
+            return refreshed
+        }
+
+        return currentIdToken
+    }
+
+    private func refreshIdToken() async throws -> String {
+        guard let config else { throw FirebaseRESTError.missingConfiguration }
+        guard let refreshToken = defaults.string(forKey: SessionKeys.refreshToken) else {
+            throw FirebaseRESTError.missingSession
+        }
+
+        var components = URLComponents(string: "https://securetoken.googleapis.com/v1/token")!
+        components.queryItems = [URLQueryItem(name: "key", value: config.apiKey)]
+
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        var bodyComponents = URLComponents()
+        bodyComponents.queryItems = [
+            URLQueryItem(name: "grant_type", value: "refresh_token"),
+            URLQueryItem(name: "refresh_token", value: refreshToken)
+        ]
+        request.httpBody = bodyComponents.percentEncodedQuery?.data(using: .utf8)
+
+        let (data, response) = try await session.data(for: request)
+        try validate(data: data, response: response)
+
+        let tokenResponse = try JSONDecoder().decode(TokenRefreshResponse.self, from: data)
+        defaults.set(tokenResponse.idToken, forKey: SessionKeys.idToken)
+        defaults.set(tokenResponse.refreshToken, forKey: SessionKeys.refreshToken)
+        defaults.set(tokenResponse.localId, forKey: SessionKeys.localId)
+        return tokenResponse.idToken
     }
 
     private func authRequest<T: Decodable>(endpoint: String, body: [String: Any]) async throws -> T {
@@ -377,6 +423,18 @@ private struct AuthResponse: Decodable {
     let email: String
     let refreshToken: String
     let localId: String
+}
+
+private struct TokenRefreshResponse: Decodable {
+    let idToken: String
+    let refreshToken: String
+    let localId: String
+
+    enum CodingKeys: String, CodingKey {
+        case idToken = "id_token"
+        case refreshToken = "refresh_token"
+        case localId = "user_id"
+    }
 }
 
 private struct EmptyAuthResponse: Decodable {}
