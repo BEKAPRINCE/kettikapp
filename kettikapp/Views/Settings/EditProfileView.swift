@@ -18,11 +18,7 @@ struct EditProfileView: View {
             Color.appBackground.ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 28) {
-                    
-                    // Avatar section
-                    AvatarEditSection(initial: String(draftName.prefix(1)))
-                    
+                VStack(spacing: 24) {
                     // Form fields
                     VStack(spacing: 16) {
                         ProfileField(
@@ -82,7 +78,7 @@ struct EditProfileView: View {
                     
                     Spacer(minLength: 40)
                 }
-                .padding(.top, 24)
+                .padding(.top, 32)
             }
         }
         .navigationTitle("Редактировать профиль")
@@ -91,42 +87,6 @@ struct EditProfileView: View {
             draftName  = vm.profile.fullName
             draftEmail = vm.profile.email
             draftPhone = vm.profile.phone
-        }
-    }
-}
-
-// MARK: - Avatar Edit Section
-struct AvatarEditSection: View {
-    let initial: String
-    
-    var body: some View {
-        VStack(spacing: 10) {
-            ZStack(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(LinearGradient(colors: [.accentTeal, Color(hex: "#4C79D8")],
-                                        startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 90, height: 90)
-                    .shadow(color: .accentTeal.opacity(0.4), radius: 15)
-                    .overlay(
-                        Text(initial.isEmpty ? "?" : initial)
-                            .font(.system(size: 38, weight: .black))
-                            .foregroundColor(.white)
-                    )
-                
-                ZStack {
-                    Circle()
-                        .fill(Color.cardBackground)
-                        .frame(width: 30, height: 30)
-                        .overlay(Circle().stroke(Color.cardBorder, lineWidth: 1))
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(.accentTeal)
-                }
-            }
-            
-            Text("Изменить фото")
-                .font(.appCaption)
-                .foregroundColor(.accentTeal)
         }
     }
 }

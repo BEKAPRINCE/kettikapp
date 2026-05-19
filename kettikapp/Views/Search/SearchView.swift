@@ -5,6 +5,7 @@ struct SearchView: View {
     
     @EnvironmentObject var vm: SearchViewModel
     @EnvironmentObject var mapVM: MapViewModel
+    @EnvironmentObject var settingsVM: SettingsViewModel
     @FocusState private var searchFocused: Bool
     
     var body: some View {
@@ -13,19 +14,23 @@ struct SearchView: View {
             // MARK: - Header
             VStack(spacing: 16) {
                 HStack {
-                    Text("Поиск")
+                    Text(settingsVM.text("Поиск", "Search"))
                         .font(.appTitle)
                         .foregroundColor(.textPrimary)
                     Spacer()
                     if vm.hasActiveFilters {
-                        Button("Сбросить") { vm.clearSearch() }
+                        Button(settingsVM.text("Сбросить", "Reset")) { vm.clearSearch() }
                             .font(.appCaption)
                             .foregroundColor(.accentTeal)
                     }
                 }
                 
                 // Search bar
-                SearchBar(query: $vm.searchQuery, isFocused: $searchFocused)
+                SearchBar(
+                    query: $vm.searchQuery,
+                    placeholder: settingsVM.text("Маршрут, номер, тип...", "Route, number, type..."),
+                    isFocused: $searchFocused
+                )
                 
                 // Type filters
                 TypeFilterRow(selectedFilter: vm.selectedFilter) { type in
@@ -45,7 +50,7 @@ struct SearchView: View {
                     if !vm.hasActiveFilters {
                         let favRoutes = mapVM.favoriteRoutes
                         if !favRoutes.isEmpty {
-                            SectionHeader(title: "★  Избранные", count: favRoutes.count)
+                            SectionHeader(title: settingsVM.text("★  Избранные", "★  Favorites"), count: favRoutes.count)
                             ForEach(favRoutes) { route in
                                 RouteRowView(
                                     route: route,
@@ -56,16 +61,17 @@ struct SearchView: View {
                             }
                         }
                         
-                        SectionHeader(title: "Все маршруты", count: vm.filteredRoutes.count)
+                        SectionHeader(title: settingsVM.text("Все маршруты", "All routes"), count: vm.filteredRoutes.count)
                     } else {
                         SectionHeader(
-                            title: vm.filteredRoutes.isEmpty ? "Ничего не найдено" : "Результаты",
+                            title: vm.filteredRoutes.isEmpty ? settingsVM.text("Ничего не найдено", "Nothing found") : settingsVM.text("Результаты", "Results"),
                             count: vm.filteredRoutes.count
                         )
                     }
                     
                     if vm.filteredRoutes.isEmpty && vm.hasActiveFilters {
                         EmptySearchView(query: vm.searchQuery)
+                            .environmentObject(settingsVM)
                     } else {
                         ForEach(vm.filteredRoutes) { route in
                             RouteRowView(
@@ -91,6 +97,7 @@ struct SearchView: View {
 // MARK: - Search Bar
 struct SearchBar: View {
     @Binding var query: String
+    let placeholder: String
     var isFocused: FocusState<Bool>.Binding
     
     var body: some View {
@@ -99,7 +106,7 @@ struct SearchBar: View {
                 .foregroundColor(query.isEmpty ? .textMuted : .accentTeal)
                 .font(.system(size: 17, weight: .semibold))
             
-            TextField("Маршрут, номер, тип...", text: $query)
+            TextField(placeholder, text: $query)
                 .foregroundColor(.textPrimary)
                 .font(.appBody)
                 .focused(isFocused)
@@ -258,16 +265,17 @@ struct RouteRowView: View {
 
 // MARK: - Empty Search View
 struct EmptySearchView: View {
+    @EnvironmentObject var settingsVM: SettingsViewModel
     let query: String
     
     var body: some View {
         VStack(spacing: 14) {
             Text("🔍")
                 .font(.system(size: 48))
-            Text("«\(query)» не найден")
+            Text(settingsVM.text("«\(query)» не найден", "\"\(query)\" not found"))
                 .font(.appHeadline)
                 .foregroundColor(.textSecondary)
-            Text("Попробуйте другой номер или тип")
+            Text(settingsVM.text("Попробуйте другой номер или тип", "Try another number or type"))
                 .font(.appCaption)
                 .foregroundColor(.textMuted)
         }
@@ -280,4 +288,5 @@ struct EmptySearchView: View {
     SearchView()
         .environmentObject(SearchViewModel())
         .environmentObject(MapViewModel())
+        .environmentObject(SettingsViewModel())
 }

@@ -112,6 +112,17 @@ struct LoginView: View {
                                     .stroke(focusedField == .password ? Color.accentTeal.opacity(0.5) : Color.cardBorder, lineWidth: 1)
                             )
                         }
+
+                        Button {
+                            focusedField = nil
+                            vm.resetPassword(email: email)
+                        } label: {
+                            Text("Забыли пароль?")
+                                .font(.appCaption)
+                                .foregroundColor(.accentTeal)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                        .disabled(vm.isLoading)
                         
                         if let error = vm.errorMessage {
                             HStack {
@@ -120,6 +131,18 @@ struct LoginView: View {
                                 Text(error)
                                     .font(.appCaption)
                                     .foregroundColor(.dangerRed)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        if let message = vm.successMessage {
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.accentGreen)
+                                Text(message)
+                                    .font(.appCaption)
+                                    .foregroundColor(.accentGreen)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }

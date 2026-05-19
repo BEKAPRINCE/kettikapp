@@ -51,13 +51,14 @@ struct MainTabView: View {
 struct CustomTabBar: View {
     
     @Binding var selectedTab: MainTabView.Tab
+    @EnvironmentObject var settingsVM: SettingsViewModel
     
     var body: some View {
         HStack(spacing: 0) {
-            TabBarButton(icon: "map.fill",        label: "Карта",    tab: .map,      selectedTab: $selectedTab)
-            TabBarButton(icon: "magnifyingglass", label: "Поиск",    tab: .search,   selectedTab: $selectedTab)
-            TabBarButton(icon: "qrcode",          label: "Билет",    tab: .ticket,   selectedTab: $selectedTab)
-            TabBarButton(icon: "person.fill",     label: "Профиль",  tab: .settings, selectedTab: $selectedTab)
+            TabBarButton(icon: "map.fill",        label: settingsVM.text("Карта", "Map"),       tab: .map,      selectedTab: $selectedTab)
+            TabBarButton(icon: "magnifyingglass", label: settingsVM.text("Поиск", "Search"),    tab: .search,   selectedTab: $selectedTab)
+            TabBarButton(icon: "qrcode",          label: settingsVM.text("Билет", "Ticket"),    tab: .ticket,   selectedTab: $selectedTab)
+            TabBarButton(icon: "person.fill",     label: settingsVM.text("Профиль", "Profile"), tab: .settings, selectedTab: $selectedTab)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)

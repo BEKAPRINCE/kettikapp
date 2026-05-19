@@ -2,6 +2,20 @@ import Foundation
 import Combine
 import SwiftUI
 
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case russian = "ru"
+    case english = "en"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .russian: return "Русский"
+        case .english: return "English"
+        }
+    }
+}
+
 // MARK: - Settings ViewModel
 final class SettingsViewModel: ObservableObject {
     private enum Keys {
@@ -12,6 +26,8 @@ final class SettingsViewModel: ObservableObject {
         static let soundAlerts = "settings.soundAlerts"
         static let autoRefresh = "settings.autoRefresh"
         static let bankCards = "settings.bankCards"
+        static let subscription = "settings.subscription"
+        static let language = "settings.language"
     }
     
     private let defaults = UserDefaults.standard
@@ -25,6 +41,9 @@ final class SettingsViewModel: ObservableObject {
     
     // MARK: - Bank Cards
     @Published var cards: [BankCard] = []
+
+    // MARK: - Subscription
+    @Published var subscription: UserSubscription = .none
     
     // MARK: - App Settings
     @Published var notificationsEnabled = true {
@@ -45,6 +64,9 @@ final class SettingsViewModel: ObservableObject {
     @Published var autoRefresh = true {
         didSet { defaults.set(autoRefresh, forKey: Keys.autoRefresh) }
     }
+    @Published var language: AppLanguage = .russian {
+        didSet { defaults.set(language.rawValue, forKey: Keys.language) }
+    }
     
     // MARK: - UI State
     @Published var toastMessage: String?
@@ -57,8 +79,11 @@ final class SettingsViewModel: ObservableObject {
         mapAnimations = defaults.object(forKey: Keys.mapAnimations) as? Bool ?? true
         soundAlerts = defaults.object(forKey: Keys.soundAlerts) as? Bool ?? false
         autoRefresh = defaults.object(forKey: Keys.autoRefresh) as? Bool ?? true
+        language = AppLanguage(rawValue: defaults.string(forKey: Keys.language) ?? "") ?? .russian
         cards = loadCachedCards()
+        subscription = loadCachedSubscription()
         loadCardsFromDatabase()
+        loadSubscriptionFromDatabase()
     }
     
     // MARK: - Profile Actions
@@ -129,6 +154,63 @@ final class SettingsViewModel: ObservableObject {
             }
         }
     }
+
+    // MARK: - Subscription Actions
+    func purchaseSubscription(_ plan: SubscriptionPlan) {
+        subscription = UserSubscription(plan: plan)
+        persistSubscriptionLocally()
+        syncSubscriptionToDatabase(successMessage: "Подписка оформлена и сохранена в базе ✓")
+    }
+
+    func cancelSubscription() {
+        subscription = .none
+        persistSubscriptionLocally()
+        syncSubscriptionToDatabase(successMessage: "Подписка отключена")
+    }
+
+    private func loadCachedSubscription() -> UserSubscription {
+        guard let data = defaults.data(forKey: Keys.subscription),
+              let subscription = try? JSONDecoder().decode(UserSubscription.self, from: data) else {
+            return .none
+        }
+
+        return subscription
+    }
+
+    private func persistSubscriptionLocally() {
+        if let data = try? JSONEncoder().encode(subscription) {
+            defaults.set(data, forKey: Keys.subscription)
+        }
+    }
+
+    private func syncSubscriptionToDatabase(successMessage: String) {
+        let subscriptionToSave = subscription
+
+        Task { [weak self] in
+            do {
+                try await FirebaseAuthRESTService.shared.saveSubscriptionToDatabase(subscriptionToSave)
+                await MainActor.run {
+                    self?.showToast(successMessage)
+                }
+            } catch {
+                await MainActor.run {
+                    self?.showToast("Не удалось сохранить подписку в базе: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func loadSubscriptionFromDatabase() {
+        Task { [weak self] in
+            guard let remoteSubscription = try? await FirebaseAuthRESTService.shared.fetchSubscription() else { return }
+            await MainActor.run {
+                self?.subscription = remoteSubscription
+                if let data = try? JSONEncoder().encode(remoteSubscription) {
+                    self?.defaults.set(data, forKey: Keys.subscription)
+                }
+            }
+        }
+    }
     
     // MARK: - Account Actions
     func deleteAccount() {
@@ -142,6 +224,10 @@ final class SettingsViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
             self?.toastMessage = nil
         }
+    }
+
+    func text(_ russian: String, _ english: String) -> String {
+        language == .english ? english : russian
     }
     
     var appSettingsItems: [(label: String, key: ReferenceWritableKeyPath<SettingsViewModel, Bool>)] {

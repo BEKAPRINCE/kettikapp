@@ -7,6 +7,7 @@ struct MapView: View {
     @EnvironmentObject var vm: MapViewModel
     @EnvironmentObject var settingsVM: SettingsViewModel
     @State private var showFavoritesSheet = false
+    @State private var showStopsSheet = false
     
     var body: some View {
         ZStack(alignment: .top) {
@@ -69,6 +70,8 @@ struct MapView: View {
                     SelectedRouteCard(route: route,
                                       isFavorite: vm.favoriteIDs.contains(route.id)) {
                         vm.toggleFavorite(routeID: route.id)
+                    } onStopsTap: {
+                        showStopsSheet = true
                     } onDismiss: {
                         vm.selectRoute(nil)
                     }
@@ -116,6 +119,12 @@ struct MapView: View {
             FavoritesSheetView(routes: vm.favoriteRoutes) { route in
                 vm.selectRoute(route)
                 showFavoritesSheet = false
+            }
+        }
+        .sheet(isPresented: $showStopsSheet) {
+            RouteStopsSheetView(stops: BusStop.route43Stops) { stop in
+                vm.selectStop(stop)
+                showStopsSheet = false
             }
         }
     }
@@ -311,6 +320,7 @@ struct SelectedRouteCard: View {
     let route: Route
     let isFavorite: Bool
     let onFavorite: () -> Void
+    let onStopsTap: () -> Void
     let onDismiss: () -> Void
     
     var body: some View {
@@ -345,17 +355,19 @@ struct SelectedRouteCard: View {
             // Action buttons
             HStack(spacing: 10) {
                 // Stops info
-                HStack {
-                    Image(systemName: "mappin.circle.fill")
-                        .foregroundColor(route.color)
-                    Text("\(route.totalStops) остановок")
-                        .font(.appCaption)
-                        .foregroundColor(.textSecondary)
+                Button(action: onStopsTap) {
+                    HStack {
+                        Image(systemName: "mappin.circle.fill")
+                            .foregroundColor(route.color)
+                        Text("\(route.totalStops) остановок")
+                            .font(.appCaption)
+                            .foregroundColor(.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.appBackground.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.appBackground.opacity(0.75))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
                 
                 // Favorite button
                 Button(action: onFavorite) {
@@ -467,6 +479,146 @@ struct FavoritesSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.appBackground)
             .scrollContentBackground(.hidden)
+        }
+    }
+}
+
+// MARK: - Route Stops Sheet
+struct RouteStopsSheetView: View {
+    let stops: [BusStop]
+    let onSelect: (BusStop) -> Void
+
+    private var outboundStops: [BusStop] {
+        stops.filter { $0.direction == .outbound }
+    }
+
+    private var inboundStops: [BusStop] {
+        stops.filter { $0.direction == .inbound }
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    RouteStopsSection(
+                        title: "Туда",
+                        subtitle: "Ак Тилек - 2 Прораба",
+                        stops: outboundStops,
+                        startIndex: 1,
+                        color: .accentTeal,
+                        onSelect: onSelect
+                    )
+
+                    RouteStopsSection(
+                        title: "Обратно",
+                        subtitle: "Детская областная - мкр Анар",
+                        stops: inboundStops,
+                        startIndex: outboundStops.count + 1,
+                        color: .accentYellow,
+                        onSelect: onSelect
+                    )
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
+                .padding(.bottom, 28)
+            }
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("Остановки 43")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+struct RouteStopsSection: View {
+    let title: String
+    let subtitle: String
+    let stops: [BusStop]
+    let startIndex: Int
+    let color: Color
+    let onSelect: (BusStop) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.appLabel)
+                    .foregroundColor(.textPrimary)
+                    .textCase(.uppercase)
+                Text(subtitle)
+                    .font(.appCaption)
+                    .foregroundColor(.textMuted)
+            }
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
+                    Button {
+                        onSelect(stop)
+                    } label: {
+                        RouteStopRow(
+                            number: startIndex + index,
+                            stop: stop,
+                            color: color,
+                            showDivider: index < stops.count - 1
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .background(Color.cardBackground.opacity(0.95))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color.cardBorder, lineWidth: 1)
+            )
+        }
+    }
+}
+
+struct RouteStopRow: View {
+    let number: Int
+    let stop: BusStop
+    let color: Color
+    let showDivider: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.18))
+                    .frame(width: 34, height: 34)
+                Text("\(number)")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundColor(color)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(stop.name)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .lineLimit(2)
+                Text(String(format: "%.5f, %.5f", stop.coordinate.latitude, stop.coordinate.longitude))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(.textMuted)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.textMuted)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .overlay(alignment: .bottom) {
+            if showDivider {
+                Rectangle()
+                    .fill(Color.cardBorder)
+                    .frame(height: 1)
+                    .padding(.leading, 60)
+            }
         }
     }
 }

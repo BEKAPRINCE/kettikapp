@@ -68,6 +68,16 @@ final class FirebaseAuthRESTService {
         return profile
     }
 
+    func sendPasswordReset(email: String) async throws {
+        let _: EmptyAuthResponse = try await authRequest(
+            endpoint: "accounts:sendOobCode",
+            body: [
+                "requestType": "PASSWORD_RESET",
+                "email": email
+            ]
+        )
+    }
+
     func restoreProfile() async throws -> UserProfile? {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
@@ -105,6 +115,17 @@ final class FirebaseAuthRESTService {
         return try await fetchUserDocument(localId: localId, idToken: idToken).bankCards()
     }
 
+    func fetchSubscription() async throws -> UserSubscription {
+        guard
+            let localId = defaults.string(forKey: SessionKeys.localId),
+            let idToken = defaults.string(forKey: SessionKeys.idToken)
+        else {
+            return .none
+        }
+
+        return try await fetchUserDocument(localId: localId, idToken: idToken).subscription()
+    }
+
     func saveBankCards(_ cards: [BankCard]) {
         guard
             let localId = defaults.string(forKey: SessionKeys.localId),
@@ -118,6 +139,34 @@ final class FirebaseAuthRESTService {
         }
     }
 
+    func saveSubscription(_ subscription: UserSubscription) {
+        guard
+            let localId = defaults.string(forKey: SessionKeys.localId),
+            let idToken = defaults.string(forKey: SessionKeys.idToken)
+        else {
+            return
+        }
+
+        Task {
+            do {
+                try await saveSubscription(subscription, localId: localId, idToken: idToken)
+            } catch {
+                print("Firestore subscription sync failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func saveSubscriptionToDatabase(_ subscription: UserSubscription) async throws {
+        guard
+            let localId = defaults.string(forKey: SessionKeys.localId),
+            let idToken = defaults.string(forKey: SessionKeys.idToken)
+        else {
+            throw FirebaseRESTError.missingSession
+        }
+
+        try await saveSubscription(subscription, localId: localId, idToken: idToken)
+    }
+
     func logout() {
         defaults.removeObject(forKey: SessionKeys.idToken)
         defaults.removeObject(forKey: SessionKeys.refreshToken)
@@ -125,6 +174,8 @@ final class FirebaseAuthRESTService {
         defaults.removeObject(forKey: SessionKeys.email)
         defaults.removeObject(forKey: SessionKeys.fullName)
         defaults.removeObject(forKey: SessionKeys.phone)
+        defaults.removeObject(forKey: "settings.subscription")
+        defaults.removeObject(forKey: "settings.bankCards")
     }
 
     func deleteAccount() async throws {
@@ -224,6 +275,30 @@ final class FirebaseAuthRESTService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONEncoder().encode(FirestoreBankCardsDocument(cards: cards))
+
+        let (data, response) = try await session.data(for: request)
+        try validate(data: data, response: response)
+    }
+
+    private func saveSubscription(_ subscription: UserSubscription, localId: String, idToken: String) async throws {
+        guard let config else { throw FirebaseRESTError.missingConfiguration }
+
+        var components = URLComponents(url: firestoreDocumentURL(projectId: config.projectId, localId: localId), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscription"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscriptionPlanId"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscriptionTitle"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscriptionStartedAt"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscriptionExpiresAt"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscriptionIsPurchased"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "subscriptionPriceSom")
+        ]
+
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(FirestoreSubscriptionDocument(subscription: subscription))
 
         let (data, response) = try await session.data(for: request)
         try validate(data: data, response: response)
@@ -352,6 +427,24 @@ private struct FirestoreDocument: Decodable {
             )
         } ?? []
     }
+
+    func subscription() -> UserSubscription {
+        guard let documentFields = fields else { return .none }
+
+        let formatter = ISO8601DateFormatter()
+        let subscriptionFields = documentFields["subscription"]?.mapValue?.fields
+        let planId = subscriptionFields?["planId"]?.stringValue ?? documentFields["subscriptionPlanId"]?.stringValue ?? ""
+        let startedAtText = subscriptionFields?["startedAt"]?.stringValue ?? documentFields["subscriptionStartedAt"]?.stringValue ?? ""
+        let expiresAtText = subscriptionFields?["expiresAt"]?.stringValue ?? documentFields["subscriptionExpiresAt"]?.stringValue ?? ""
+        let isPurchasedText = subscriptionFields?["isPurchased"]?.stringValue ?? documentFields["subscriptionIsPurchased"]?.stringValue ?? "false"
+
+        return UserSubscription(
+            planId: planId,
+            startedAt: formatter.date(from: startedAtText) ?? Date.distantPast,
+            expiresAt: formatter.date(from: expiresAtText) ?? Date.distantPast,
+            isPurchased: isPurchasedText == "true"
+        )
+    }
 }
 
 private struct FirestoreProfileDocument: Encodable {
@@ -390,6 +483,34 @@ private struct FirestoreBankCardsDocument: Encodable {
     }
 }
 
+private struct FirestoreSubscriptionDocument: Encodable {
+    let fields: [String: FirestoreValue]
+
+    init(subscription: UserSubscription) {
+        let formatter = ISO8601DateFormatter()
+        let startedAt = formatter.string(from: subscription.startedAt)
+        let expiresAt = formatter.string(from: subscription.expiresAt)
+        let isPurchased = subscription.isPurchased ? "true" : "false"
+
+        fields = [
+            "subscription": FirestoreValue(
+                mapValue: FirestoreMapValue(fields: [
+                    "planId": FirestoreValue(stringValue: subscription.planId),
+                    "startedAt": FirestoreValue(stringValue: startedAt),
+                    "expiresAt": FirestoreValue(stringValue: expiresAt),
+                    "isPurchased": FirestoreValue(stringValue: isPurchased)
+                ])
+            ),
+            "subscriptionPlanId": FirestoreValue(stringValue: subscription.planId),
+            "subscriptionTitle": FirestoreValue(stringValue: subscription.plan?.title ?? ""),
+            "subscriptionStartedAt": FirestoreValue(stringValue: startedAt),
+            "subscriptionExpiresAt": FirestoreValue(stringValue: expiresAt),
+            "subscriptionIsPurchased": FirestoreValue(stringValue: isPurchased),
+            "subscriptionPriceSom": FirestoreValue(stringValue: subscription.plan.map { "\($0.priceSom)" } ?? "0")
+        ]
+    }
+}
+
 private struct FirestoreValue: Codable {
     var stringValue: String?
     var arrayValue: FirestoreArrayValue?
@@ -424,6 +545,7 @@ private struct FirestoreMapValue: Codable {
 
 private enum FirebaseRESTError: LocalizedError {
     case missingConfiguration
+    case missingSession
     case firebase(String)
     case httpStatus(Int)
 
@@ -431,6 +553,8 @@ private enum FirebaseRESTError: LocalizedError {
         switch self {
         case .missingConfiguration:
             return "Firebase не настроен. Добавьте GoogleService-Info.plist"
+        case .missingSession:
+            return "Войдите в аккаунт, чтобы сохранить данные в базе"
         case .firebase(let code):
             switch code {
             case "EMAIL_EXISTS":
@@ -457,6 +581,7 @@ final class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var successMessage: String?
     @Published var currentUserProfile: UserProfile?
 
     init() {
@@ -472,6 +597,7 @@ final class AuthViewModel: ObservableObject {
     func login(email: String, password: String) {
         isLoading = true
         errorMessage = nil
+        successMessage = nil
 
         Task {
             do {
@@ -493,6 +619,7 @@ final class AuthViewModel: ObservableObject {
     func register(name: String, email: String, password: String, confirmPassword: String) {
         isLoading = true
         errorMessage = nil
+        successMessage = nil
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -538,18 +665,45 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Password Reset
+    func resetPassword(email: String) {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        errorMessage = nil
+        successMessage = nil
+
+        guard trimmedEmail.contains("@") else {
+            errorMessage = "Введите email от аккаунта"
+            return
+        }
+
+        isLoading = true
+
+        Task {
+            do {
+                try await FirebaseAuthRESTService.shared.sendPasswordReset(email: trimmedEmail)
+                successMessage = "Письмо для восстановления отправлено на \(trimmedEmail)"
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+
+            isLoading = false
+        }
+    }
+
     // MARK: - Logout
     func logout() {
         FirebaseAuthRESTService.shared.logout()
         isAuthenticated = false
         currentUserProfile = nil
         errorMessage = nil
+        successMessage = nil
     }
 
     // MARK: - Delete Account
     func deleteAccount() {
         isLoading = true
         errorMessage = nil
+        successMessage = nil
 
         Task {
             do {

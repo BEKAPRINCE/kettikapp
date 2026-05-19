@@ -23,45 +23,44 @@ struct SettingsView: View {
                         .padding(.horizontal, 20)
                         
                         // Settings groups
-                        SettingsGroupView(title: "Аккаунт") {
-                            NavigationLink(destination: EditProfileView().environmentObject(vm)) {
-                                SettingsRow(icon: "pencil.circle.fill", label: "Редактировать профиль", color: .accentTeal)
+                        SettingsGroupView(title: vm.text("Аккаунт", "Account")) {
+                            NavigationLink(destination: SubscriptionView().environmentObject(vm)) {
+                                SettingsRow(
+                                    icon: "ticket.fill",
+                                    label: vm.text("Подписка", "Subscription"),
+                                    subtitle: vm.subscription.isActive ? vm.subscription.plan?.title : vm.text("Не активна", "Inactive"),
+                                    color: .accentTeal
+                                )
                             }
                             Divider().background(Color.cardBorder).padding(.leading, 56)
                             NavigationLink(destination: BankCardsView().environmentObject(vm)) {
-                                SettingsRow(icon: "creditcard.fill", label: "Банковские карты",
-                                            subtitle: "\(vm.cards.count) карт", color: .accentYellow)
+                                SettingsRow(icon: "creditcard.fill", label: vm.text("Банковские карты", "Bank cards"),
+                                            subtitle: vm.text("\(vm.cards.count) карт", "\(vm.cards.count) cards"), color: .accentYellow)
                             }
                         }
                         .padding(.horizontal, 20)
                         
-                        SettingsGroupView(title: "Приложение") {
+                        SettingsGroupView(title: vm.text("Приложение", "App")) {
                             NavigationLink(destination: AppSettingsView().environmentObject(vm)) {
-                                SettingsRow(icon: "gear", label: "Настройки приложения", color: .accentGreen)
+                                SettingsRow(icon: "gear", label: vm.text("Настройки приложения", "App settings"), color: .accentGreen)
                             }
-                            Divider().background(Color.cardBorder).padding(.leading, 56)
-                            SettingsRow(icon: "bell.fill", label: "Уведомления",
-                                        subtitle: vm.notificationsEnabled ? "Включены" : "Выключены",
-                                        color: .accentOrange)
-                            Divider().background(Color.cardBorder).padding(.leading, 56)
-                            SettingsRow(icon: "globe", label: "Язык", subtitle: "Русский", color: .accentTeal)
                         }
                         .padding(.horizontal, 20)
                         
-                        SettingsGroupView(title: "Поддержка") {
+                        SettingsGroupView(title: vm.text("Поддержка", "Support")) {
                             NavigationLink(destination: HelpView()) {
-                                SettingsRow(icon: "questionmark.circle.fill", label: "Помощь", color: .accentTeal)
+                                SettingsRow(icon: "questionmark.circle.fill", label: vm.text("Помощь", "Help"), color: .accentTeal)
                             }
                             Divider().background(Color.cardBorder).padding(.leading, 56)
                             Button {
                                 requestReview()
-                                vm.showToast("Спасибо за оценку!")
+                                vm.showToast(vm.text("Спасибо за оценку!", "Thanks for your rating!"))
                             } label: {
-                                SettingsRow(icon: "star.fill", label: "Оценить приложение", color: .accentYellow)
+                                SettingsRow(icon: "star.fill", label: vm.text("Оценить приложение", "Rate app"), color: .accentYellow)
                             }
                             Divider().background(Color.cardBorder).padding(.leading, 56)
                             NavigationLink(destination: AboutAppView()) {
-                                SettingsRow(icon: "info.circle.fill", label: "О приложении", subtitle: "v2.1.0", color: .accentGreen)
+                                SettingsRow(icon: "info.circle.fill", label: vm.text("О приложении", "About app"), subtitle: "v2.1.0", color: .accentGreen)
                             }
                         }
                         .padding(.horizontal, 20)
@@ -77,7 +76,7 @@ struct SettingsView: View {
                         Button {
                             authVM.logout()
                         } label: {
-                            Text("Выйти из аккаунта")
+                            Text(vm.text("Выйти из аккаунта", "Log out"))
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.dangerRed)
                                 .frame(maxWidth: .infinity)
@@ -97,7 +96,7 @@ struct SettingsView: View {
                     ToastView(message: msg)
                 }
             }
-            .navigationTitle("Профиль")
+            .navigationTitle(vm.text("Профиль", "Profile"))
             .navigationBarTitleDisplayMode(.large)
         }
     }
@@ -181,7 +180,7 @@ struct AboutAppView: View {
                 }
 
                 VStack(spacing: 8) {
-                    Text("KetTik")
+                    Text("Kettik")
                         .font(.system(size: 30, weight: .heavy, design: .rounded))
                         .foregroundColor(.textPrimary)
                     Text("Версия 2.1.0")
@@ -232,19 +231,7 @@ struct ProfileHeaderCard: View {
     let profile: UserProfile
     
     var body: some View {
-        HStack(spacing: 14) {
-            // Avatar
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(colors: [.accentTeal, Color(hex: "#4C79D8")],
-                                        startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 58, height: 58)
-                    .shadow(color: .accentTeal.opacity(0.4), radius: 10)
-                Text(profile.avatarInitial)
-                    .font(.system(size: 24, weight: .black))
-                    .foregroundColor(.white)
-            }
-            
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text(profile.fullName)
@@ -286,7 +273,8 @@ struct ProfileHeaderCard: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.textMuted)
         }
-        .padding(18)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 20)
         .cardStyle()
         .overlay(
             RoundedRectangle(cornerRadius: 18)

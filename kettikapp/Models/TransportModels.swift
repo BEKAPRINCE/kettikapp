@@ -130,6 +130,180 @@ struct MonthlyTicket {
     }
 }
 
+// MARK: - Subscription Models
+enum SubscriptionPlan: String, Codable, CaseIterable, Identifiable {
+    case cityMonthly
+    case unlimitedMonthly
+    case schoolMonthly
+    case studentMonthly
+    case pensionerMonthly
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .cityMonthly: return "KetTik City"
+        case .unlimitedMonthly: return "KetTik Unlimited"
+        case .schoolMonthly: return "KetTik School"
+        case .studentMonthly: return "KetTik Student"
+        case .pensionerMonthly: return "KetTik Pensioner"
+        }
+    }
+
+    var audience: String {
+        switch self {
+        case .cityMonthly: return "Стандартный тариф"
+        case .unlimitedMonthly: return "Для частых поездок"
+        case .schoolMonthly: return "Льгота для школьников"
+        case .studentMonthly: return "Льгота для студентов"
+        case .pensionerMonthly: return "Льгота для пенсионеров"
+        }
+    }
+
+    func audienceText(language: AppLanguage) -> String {
+        guard language == .english else { return audience }
+        switch self {
+        case .cityMonthly: return "Standard plan"
+        case .unlimitedMonthly: return "For frequent rides"
+        case .schoolMonthly: return "Student discount"
+        case .studentMonthly: return "College discount"
+        case .pensionerMonthly: return "Senior discount"
+        }
+    }
+
+    var period: String {
+        "1 месяц"
+    }
+
+    var priceSom: Int {
+        switch self {
+        case .cityMonthly: return 1590
+        case .unlimitedMonthly: return 1790
+        case .schoolMonthly: return 490
+        case .studentMonthly: return 990
+        case .pensionerMonthly: return 390
+        }
+    }
+
+    var priceUSD: Double {
+        Double(priceSom) / 87.45
+    }
+
+    var tripLimit: String {
+        switch self {
+        case .cityMonthly: return "до 150 поездок"
+        case .unlimitedMonthly: return "безлимит"
+        case .schoolMonthly: return "до 100 поездок"
+        case .studentMonthly: return "до 150 поездок"
+        case .pensionerMonthly: return "до 90 поездок"
+        }
+    }
+
+    func tripLimitText(language: AppLanguage) -> String {
+        guard language == .english else { return tripLimit }
+        switch self {
+        case .cityMonthly: return "up to 150 rides"
+        case .unlimitedMonthly: return "unlimited"
+        case .schoolMonthly: return "up to 100 rides"
+        case .studentMonthly: return "up to 150 rides"
+        case .pensionerMonthly: return "up to 90 rides"
+        }
+    }
+
+    var tripsText: String {
+        switch self {
+        case .cityMonthly, .studentMonthly: return "150"
+        case .unlimitedMonthly: return "∞"
+        case .schoolMonthly: return "100"
+        case .pensionerMonthly: return "90"
+        }
+    }
+
+    var savingsText: String {
+        switch self {
+        case .cityMonthly: return "экономия до 660 сом/мес"
+        case .unlimitedMonthly: return "экономия до 460 сом/мес"
+        case .schoolMonthly: return "льготная квота: 100 поездок"
+        case .studentMonthly: return "льготная квота: 150 поездок"
+        case .pensionerMonthly: return "льготная квота: 90 поездок"
+        }
+    }
+
+    func savingsText(language: AppLanguage) -> String {
+        guard language == .english else { return savingsText }
+        switch self {
+        case .cityMonthly: return "save up to 660 KGS/month"
+        case .unlimitedMonthly: return "save up to 460 KGS/month"
+        case .schoolMonthly: return "discount quota: 100 rides"
+        case .studentMonthly: return "discount quota: 150 rides"
+        case .pensionerMonthly: return "discount quota: 90 rides"
+        }
+    }
+
+    var durationMonths: Int {
+        1
+    }
+
+    var priceText: String {
+        "\(priceSom) сом"
+    }
+
+    var usdText: String {
+        String(format: "$%.2f", priceUSD)
+    }
+}
+
+struct UserSubscription: Codable, Equatable {
+    var planId: String
+    var startedAt: Date
+    var expiresAt: Date
+    var isPurchased: Bool
+
+    var plan: SubscriptionPlan? {
+        SubscriptionPlan(rawValue: planId)
+    }
+
+    var isActive: Bool {
+        isPurchased && plan != nil && expiresAt > Date()
+    }
+
+    var validUntilText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMMM yyyy"
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter.string(from: expiresAt)
+    }
+
+    static let none = UserSubscription(
+        planId: "",
+        startedAt: Date.distantPast,
+        expiresAt: Date.distantPast,
+        isPurchased: false
+    )
+
+    init(planId: String, startedAt: Date, expiresAt: Date, isPurchased: Bool) {
+        self.planId = planId
+        self.startedAt = startedAt
+        self.expiresAt = expiresAt
+        self.isPurchased = isPurchased
+    }
+
+    init(plan: SubscriptionPlan, startDate: Date = Date()) {
+        let expiresAt = Calendar.current.date(
+            byAdding: .month,
+            value: plan.durationMonths,
+            to: startDate
+        ) ?? startDate
+
+        self.init(
+            planId: plan.rawValue,
+            startedAt: startDate,
+            expiresAt: expiresAt,
+            isPurchased: true
+        )
+    }
+}
+
 // MARK: - Sample Data
 extension Route {
     static let sampleData: [Route] = [
