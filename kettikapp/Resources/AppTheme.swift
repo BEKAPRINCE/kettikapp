@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - App Brand Colors
 extension Color {
@@ -47,6 +48,98 @@ struct CardModifier: ViewModifier {
 
 extension View {
     func cardStyle() -> some View { modifier(CardModifier()) }
+}
+
+
+// MARK: - Native Liquid Glass
+enum LiquidGlassStyle {
+    case regular
+    case clear
+}
+
+private struct NativeLiquidGlassView: UIViewRepresentable {
+    let style: LiquidGlassStyle
+
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: effect)
+    }
+
+    func updateUIView(_ view: UIVisualEffectView, context: Context) {
+        view.effect = effect
+    }
+
+    private var effect: UIVisualEffect {
+        if #available(iOS 26.0, *) {
+            switch style {
+            case .regular:
+                return UIGlassEffect(style: .regular)
+            case .clear:
+                return UIGlassEffect(style: .clear)
+            }
+        } else {
+            return UIBlurEffect(style: .systemUltraThinMaterialDark)
+        }
+    }
+}
+
+struct LiquidGlassBackground: View {
+    var cornerRadius: CGFloat = 28
+    var style: LiquidGlassStyle = .regular
+    var tint: Color = .cardBackground
+    var tintOpacity: Double = 0.18
+    var strokeOpacity: Double = 0.24
+    var shadowOpacity: Double = 0.32
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(Color.clear)
+            .background {
+                NativeLiquidGlassView(style: style)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(tint.opacity(tintOpacity))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(strokeOpacity),
+                                Color.cardBorder.opacity(0.7),
+                                Color.accentTeal.opacity(0.16)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: .black.opacity(shadowOpacity), radius: 22, y: 10)
+    }
+}
+
+extension View {
+    func liquidGlassBackground(
+        cornerRadius: CGFloat = 28,
+        style: LiquidGlassStyle = .regular,
+        tint: Color = .cardBackground,
+        tintOpacity: Double = 0.18,
+        strokeOpacity: Double = 0.24,
+        shadowOpacity: Double = 0.32
+    ) -> some View {
+        background {
+            LiquidGlassBackground(
+                cornerRadius: cornerRadius,
+                style: style,
+                tint: tint,
+                tintOpacity: tintOpacity,
+                strokeOpacity: strokeOpacity,
+                shadowOpacity: shadowOpacity
+            )
+        }
+    }
 }
 
 // MARK: - Fonts

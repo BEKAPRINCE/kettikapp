@@ -62,29 +62,13 @@ struct CustomTabBar: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Color.cardBackground.opacity(0.52))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.22),
-                                    Color.cardBorder.opacity(0.7),
-                                    Color.accentTeal.opacity(0.18)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-                .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
+        .liquidGlassBackground(
+            cornerRadius: 28,
+            style: .regular,
+            tint: .cardBackground,
+            tintOpacity: 0.16,
+            strokeOpacity: 0.28,
+            shadowOpacity: 0.34
         )
         .padding(.horizontal, 14)
         .padding(.bottom, 10)
@@ -120,16 +104,20 @@ struct TabBarButton: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 58)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? Color.accentTeal.opacity(0.18) : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(isSelected ? Color.white.opacity(0.12) : Color.clear, lineWidth: 1)
+            .background {
+                if isSelected {
+                    LiquidGlassBackground(
+                        cornerRadius: 20,
+                        style: .clear,
+                        tint: .accentTeal,
+                        tintOpacity: 0.22,
+                        strokeOpacity: 0.30,
+                        shadowOpacity: 0.16
                     )
-            )
+                }
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 

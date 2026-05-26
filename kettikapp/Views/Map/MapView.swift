@@ -166,9 +166,14 @@ struct MapHeaderView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(Color.cardBackground.opacity(0.9))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color.accentYellow.opacity(0.3), lineWidth: 1))
+                .liquidGlassBackground(
+                    cornerRadius: 18,
+                    style: .clear,
+                    tint: .cardBackground,
+                    tintOpacity: 0.12,
+                    strokeOpacity: 0.25,
+                    shadowOpacity: 0.18
+                )
             }
         }
         .padding(.horizontal, 16)
@@ -194,10 +199,14 @@ struct MapControlButton: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(.textPrimary)
                 .frame(width: 42, height: 42)
-                .background(Color.cardBackground.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.cardBorder, lineWidth: 1))
-                .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
+                .liquidGlassBackground(
+                    cornerRadius: 12,
+                    style: .clear,
+                    tint: .cardBackground,
+                    tintOpacity: 0.14,
+                    strokeOpacity: 0.24,
+                    shadowOpacity: 0.24
+                )
         }
     }
 }
