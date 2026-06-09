@@ -23,15 +23,27 @@ struct KetTikApp: App {
                     .transition(.opacity)
                 } else {
                     if authViewModel.isAuthenticated {
-                        MainTabView()
-                            .environmentObject(authViewModel)
-                            .environmentObject(settingsViewModel)
-                            .onReceive(authViewModel.$currentUserProfile.compactMap { $0 }) { profile in
-                                settingsViewModel.profile = profile
+                        if let profile = authViewModel.currentUserProfile {
+                            if profile.role == .driver {
+                                DriverDashboardView()
+                                    .environmentObject(authViewModel)
+                            } else {
+                                MainTabView()
+                                    .environmentObject(authViewModel)
+                                    .environmentObject(settingsViewModel)
+                                    .onReceive(authViewModel.$currentUserProfile.compactMap { $0 }) { profile in
+                                        settingsViewModel.profile = profile
+                                    }
+                                    .onReceive(authViewModel.$currentUserProfile.filter { $0 == nil }) { _ in
+                                        settingsViewModel.profile = UserProfile(fullName: "Пользователь", email: "", phone: "", role: .passenger)
+                                    }
                             }
-                            .onReceive(authViewModel.$currentUserProfile.filter { $0 == nil }) { _ in
-                                settingsViewModel.profile = UserProfile(fullName: "Пользователь", email: "", phone: "")
-                            }
+                        } else {
+                            ProgressView()
+                                .tint(.accentTeal)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(Color.appBackground)
+                        }
                     } else {
                         AuthFlowView()
                             .environmentObject(authViewModel)

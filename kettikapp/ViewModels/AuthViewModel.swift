@@ -12,6 +12,7 @@ final class FirebaseAuthRESTService {
         static let email = "firebase.session.email"
         static let fullName = "firebase.session.fullName"
         static let phone = "firebase.session.phone"
+        static let role = "firebase.session.role"
     }
 
     private let defaults = UserDefaults.standard
@@ -55,7 +56,7 @@ final class FirebaseAuthRESTService {
         )
     }
 
-    func register(name: String, email: String, password: String) async throws -> UserProfile {
+    func register(name: String, email: String, password: String, role: UserRole = .passenger) async throws -> UserProfile {
         let response: AuthResponse = try await authRequest(
             endpoint: "accounts:signUp",
             body: [
@@ -66,7 +67,7 @@ final class FirebaseAuthRESTService {
         )
         saveSession(response)
 
-        let profile = UserProfile(fullName: name, email: response.email, phone: "")
+        let profile = UserProfile(fullName: name, email: response.email, phone: "", role: role)
         cacheProfile(profile)
         try? await saveProfile(profile, localId: response.localId, idToken: response.idToken)
         return profile
@@ -107,6 +108,18 @@ final class FirebaseAuthRESTService {
             let freshToken = (try? await validIdToken()) ?? idToken
             try? await saveProfile(profile, localId: localId, idToken: freshToken)
         }
+    }
+
+    func saveProfileToDatabase(_ profile: UserProfile) async throws {
+        guard
+            let localId = defaults.string(forKey: SessionKeys.localId),
+            let idToken = try await validIdToken()
+        else {
+            throw FirebaseRESTError.missingSession
+        }
+
+        cacheProfile(profile)
+        try await saveProfile(profile, localId: localId, idToken: idToken)
     }
 
     func fetchBankCards() async throws -> [BankCard] {
@@ -181,6 +194,7 @@ final class FirebaseAuthRESTService {
         defaults.removeObject(forKey: SessionKeys.email)
         defaults.removeObject(forKey: SessionKeys.fullName)
         defaults.removeObject(forKey: SessionKeys.phone)
+        defaults.removeObject(forKey: SessionKeys.role)
         defaults.removeObject(forKey: "settings.subscription")
         defaults.removeObject(forKey: "settings.bankCards")
     }
@@ -295,7 +309,8 @@ final class FirebaseAuthRESTService {
         components.queryItems = [
             URLQueryItem(name: "updateMask.fieldPaths", value: "fullName"),
             URLQueryItem(name: "updateMask.fieldPaths", value: "email"),
-            URLQueryItem(name: "updateMask.fieldPaths", value: "phone")
+            URLQueryItem(name: "updateMask.fieldPaths", value: "phone"),
+            URLQueryItem(name: "updateMask.fieldPaths", value: "role")
         ]
 
         var request = URLRequest(url: components.url!)
@@ -376,6 +391,7 @@ final class FirebaseAuthRESTService {
         defaults.set(profile.fullName, forKey: SessionKeys.fullName)
         defaults.set(profile.email, forKey: SessionKeys.email)
         defaults.set(profile.phone, forKey: SessionKeys.phone)
+        defaults.set(profile.role.rawValue, forKey: SessionKeys.role)
     }
 
     private func cachedProfile(fallbackEmail: String) -> UserProfile {
@@ -385,7 +401,8 @@ final class FirebaseAuthRESTService {
         return UserProfile(
             fullName: defaults.string(forKey: SessionKeys.fullName) ?? fallbackName,
             email: email,
-            phone: defaults.string(forKey: SessionKeys.phone) ?? ""
+            phone: defaults.string(forKey: SessionKeys.phone) ?? "",
+            role: UserRole(rawValue: defaults.string(forKey: SessionKeys.role) ?? "") ?? .passenger
         )
     }
 
@@ -397,6 +414,15 @@ final class FirebaseAuthRESTService {
             }
             throw FirebaseRESTError.httpStatus(httpResponse.statusCode)
         }
+    }
+}
+
+// MARK: - Driver Access
+enum DriverAccessPolicy {
+    static let inviteCode = "KETTIK-43-DRIVER"
+
+    static func isValidInviteCode(_ value: String) -> Bool {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == inviteCode
     }
 }
 
@@ -455,10 +481,13 @@ private struct FirestoreDocument: Decodable {
         let email = fields?["email"]?.stringValue ?? fallbackEmail
         let fallbackName = email.components(separatedBy: "@").first ?? "Пользователь"
 
+        let role = UserRole(rawValue: fields?["role"]?.stringValue ?? "") ?? .passenger
+
         return UserProfile(
             fullName: fullName?.isEmpty == false ? fullName! : fallbackName,
             email: email,
-            phone: fields?["phone"]?.stringValue ?? ""
+            phone: fields?["phone"]?.stringValue ?? "",
+            role: role
         )
     }
 
@@ -512,7 +541,8 @@ private struct FirestoreProfileDocument: Encodable {
         fields = [
             "fullName": FirestoreValue(stringValue: profile.fullName),
             "email": FirestoreValue(stringValue: profile.email),
-            "phone": FirestoreValue(stringValue: profile.phone)
+            "phone": FirestoreValue(stringValue: profile.phone),
+            "role": FirestoreValue(stringValue: profile.role.rawValue)
         ]
     }
 }
@@ -721,6 +751,134 @@ final class AuthViewModel: ObservableObject {
 
             isLoading = false
         }
+    }
+
+    // MARK: - Driver Auth
+    func loginDriver(email: String, password: String) {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+
+        Task {
+            do {
+                let profile = try await FirebaseAuthRESTService.shared.signIn(
+                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    password: password
+                )
+
+                guard profile.role == .driver else {
+                    FirebaseAuthRESTService.shared.logout()
+                    errorMessage = "Этот аккаунт не подтверждён как водитель"
+                    isAuthenticated = false
+                    currentUserProfile = nil
+                    isLoading = false
+                    return
+                }
+
+                currentUserProfile = profile
+                isAuthenticated = true
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+
+            isLoading = false
+        }
+    }
+
+    func registerDriver(name: String, email: String, password: String, confirmPassword: String, inviteCode: String) {
+        guard DriverAccessPolicy.isValidInviteCode(inviteCode) else {
+            errorMessage = "Неверный код допуска водителя"
+            successMessage = nil
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedName.isEmpty else {
+            isLoading = false
+            errorMessage = "Введите имя водителя"
+            return
+        }
+
+        guard trimmedEmail.contains("@") else {
+            isLoading = false
+            errorMessage = "Введите корректный email"
+            return
+        }
+
+        guard password.count >= 6 else {
+            isLoading = false
+            errorMessage = "Пароль должен быть не короче 6 символов"
+            return
+        }
+
+        guard password == confirmPassword else {
+            isLoading = false
+            errorMessage = "Пароли не совпадают"
+            return
+        }
+
+        Task {
+            do {
+                let profile = try await FirebaseAuthRESTService.shared.register(
+                    name: trimmedName,
+                    email: trimmedEmail,
+                    password: password,
+                    role: .driver
+                )
+                currentUserProfile = profile
+                isAuthenticated = true
+            } catch {
+                await handleExistingEmailForDriver(
+                    error: error,
+                    name: trimmedName,
+                    email: trimmedEmail,
+                    password: password
+                )
+            }
+
+            isLoading = false
+        }
+    }
+
+    private func handleExistingEmailForDriver(error: Error, name: String, email: String, password: String) async {
+        guard isEmailAlreadyRegistered(error) else {
+            errorMessage = error.localizedDescription
+            return
+        }
+
+        do {
+            let existingProfile = try await FirebaseAuthRESTService.shared.signIn(email: email, password: password)
+            let driverProfile = UserProfile(
+                fullName: name.isEmpty ? existingProfile.fullName : name,
+                email: existingProfile.email,
+                phone: existingProfile.phone,
+                role: .driver
+            )
+
+            try await FirebaseAuthRESTService.shared.saveProfileToDatabase(driverProfile)
+            currentUserProfile = driverProfile
+            isAuthenticated = true
+            successMessage = "Существующий аккаунт подтверждён как водитель"
+        } catch {
+            FirebaseAuthRESTService.shared.logout()
+            currentUserProfile = nil
+            isAuthenticated = false
+            errorMessage = "Этот email уже есть в Firebase Auth. Введите пароль от этого аккаунта или используйте другой email для отдельного аккаунта водителя."
+        }
+    }
+
+    private func isEmailAlreadyRegistered(_ error: Error) -> Bool {
+        if case FirebaseRESTError.firebase(let code) = error {
+            return code == "EMAIL_EXISTS"
+        }
+
+        return false
     }
 
     // MARK: - Password Reset

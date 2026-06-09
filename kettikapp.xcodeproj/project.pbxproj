@@ -268,6 +268,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = kettikapp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Камера нужна водителю для сканирования QR-билетов пассажиров";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Геолокация нужна для передачи позиции автобуса во время рейса";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Для отображения вашего местоположения на карте";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -314,6 +316,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = kettikapp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Камера нужна водителю для сканирования QR-билетов пассажиров";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Геолокация нужна для передачи позиции автобуса во время рейса";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Для отображения вашего местоположения на карте";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -368,7 +372,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = EF5905FC2F5184EB00233CBA /* Project object */;
 }

@@ -79,10 +79,16 @@ struct BusStop: Identifiable {
 }
 
 // MARK: - User Profile Model
+enum UserRole: String, Codable {
+    case passenger
+    case driver
+}
+
 struct UserProfile {
     var fullName: String
     var email: String
     var phone: String
+    var role: UserRole = .passenger
     var avatarInitial: String { String(fullName.prefix(1)) }
 }
 

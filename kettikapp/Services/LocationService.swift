@@ -12,6 +12,7 @@ final class LocationService: NSObject, ObservableObject {
     
     private let manager = CLLocationManager()
     private var isUpdating = false
+    private var driverTrackingEnabled = false
     
     // Default center: Osh city center
     let defaultCenter = CLLocationCoordinate2D(latitude: 40.513998, longitude: 72.816097)
@@ -36,11 +37,40 @@ final class LocationService: NSObject, ObservableObject {
         }
     }
     
+    func requestAlwaysPermission() {
+        authorizationStatus = manager.authorizationStatus
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            manager.requestAlwaysAuthorization()
+        case .authorizedWhenInUse:
+            manager.requestAlwaysAuthorization()
+            startUpdating()
+        case .authorizedAlways:
+            startUpdating()
+        case .denied, .restricted:
+            userLocation = defaultCenter
+        @unknown default:
+            userLocation = defaultCenter
+        }
+    }
+
+    func startDriverTracking() {
+        driverTrackingEnabled = true
+        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        manager.distanceFilter = 5
+        manager.pausesLocationUpdatesAutomatically = false
+        requestAlwaysPermission()
+    }
+
     func startUpdating() {
         guard !isUpdating else { return }
         guard manager.authorizationStatus == .authorizedWhenInUse ||
               manager.authorizationStatus == .authorizedAlways else {
-            requestPermission()
+            if driverTrackingEnabled {
+                requestAlwaysPermission()
+            } else {
+                requestPermission()
+            }
             return
         }
 
@@ -51,6 +81,7 @@ final class LocationService: NSObject, ObservableObject {
     
     func stopUpdating() {
         isUpdating = false
+        driverTrackingEnabled = false
         manager.stopUpdatingLocation()
     }
 

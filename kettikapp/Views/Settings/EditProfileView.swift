@@ -56,7 +56,8 @@ struct EditProfileView: View {
                         let updated = UserProfile(
                             fullName: draftName,
                             email:    draftEmail,
-                            phone:    draftPhone
+                            phone:    draftPhone,
+                            role:     vm.profile.role
                         )
                         vm.saveProfile(updated)
                         dismiss()

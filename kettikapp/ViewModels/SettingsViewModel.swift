@@ -36,7 +36,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var profile = UserProfile(
         fullName: "Пользователь",
         email:    "",
-        phone:    ""
+        phone:    "",
+        role:     .passenger
     )
     
     // MARK: - Bank Cards

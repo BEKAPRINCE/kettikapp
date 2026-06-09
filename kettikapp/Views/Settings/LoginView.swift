@@ -4,6 +4,7 @@ struct LoginView: View {
     
     @EnvironmentObject var vm: AuthViewModel
     let onOpenRegister: () -> Void
+    var onOpenDriverAccess: () -> Void = {}
     
     @State private var email    = ""
     @State private var password = ""
@@ -176,6 +177,15 @@ struct LoginView: View {
                             Text("Нет аккаунта? Зарегистрироваться")
                                 .font(.appCaption)
                                 .foregroundColor(.accentTeal)
+                        }
+
+                        Button(action: onOpenDriverAccess) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "steeringwheel")
+                                Text("Вход для водителя")
+                            }
+                            .font(.appCaption)
+                            .foregroundColor(.textSecondary)
                         }
                         
                         Spacer(minLength: isCompact ? 24 : 52)
